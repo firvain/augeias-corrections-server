@@ -7,7 +7,7 @@ from colorama import Fore, init
 from numpy import set_printoptions, sqrt
 from sklearn.metrics import mean_squared_error
 
-from Modules.Utils import get_data, multivariate_data, set_seed
+from Modules.Utils import get_data, set_seed
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import Dense
@@ -32,7 +32,6 @@ def get_data_from_db(table_name, column, name):
     if data is not None:
         print(f'{Fore.GREEN}Data loaded')
         data = data[[column]]
-        print(data)
         data.rename(columns={column: f'{name}_{column}'}, inplace=True)
         return data
     else:
@@ -40,11 +39,34 @@ def get_data_from_db(table_name, column, name):
         return None
 
 
+def multivariate_data(dataset, target, start_index, end_index, history_size,
+                      target_size, step, single_step=False):
+    data = []
+    labels = []
+    # dataset = dataset.values
+
+    start_index = start_index + history_size
+    if end_index is None:
+        end_index = len(dataset.values) - target_size
+
+    for i in range(start_index, end_index):
+        indices = range(i - history_size, i, step)
+        data.append(dataset.values[indices])
+
+        if single_step:
+            labels.append(target.values[i + target_size])
+        else:
+            labels.append(target.values[i:i + target_size])
+
+    return np.array(data), np.array(labels)
+
+
 def prepare_data(data, past_steps, future_steps, step):
-    x_train, y_train = multivariate_data(data.values, data['diff'].values, 0,
+
+    x_train, y_train = multivariate_data(data, data['diff'], 0,
                                          TRAIN_SPLIT, past_steps,
                                          future_steps, step)
-    x_val, y_val = multivariate_data(data.values, data['diff'].values,
+    x_val, y_val = multivariate_data(data, data['diff'],
                                      TRAIN_SPLIT, None, past_steps,
                                      future_steps, step)
     return x_train, y_train, x_val, y_val
@@ -99,8 +121,7 @@ def predict(model, x_val, y_val):
 
     predictions = np.array(predictions)
     predictions = predictions.reshape(predictions.shape[0], predictions.shape[1])
-    print(predictions.shape)
-    print(predictions)
+
     return predictions
 
 
@@ -143,6 +164,9 @@ def plot_corrections(original, predictions, column, table_name, save=False, show
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    Path('Models').mkdir(parents=True, exist_ok=True)
+    Path('Data').mkdir(parents=True, exist_ok=True)
+    Path('Plots').mkdir(parents=True, exist_ok=True)
     table = "accuweather_direct"
     col1 = 'rh'
     df1 = get_data_from_db(table, col1, 'opendataset')
@@ -157,9 +181,10 @@ if __name__ == '__main__':
 
     # prepare data
     past_history = 72
-    future_target = 24
+    future_target = 6
     STEP = 1
     TRAIN_SPLIT = int(len(df) * 0.9)
+
     x_train_multi, y_train_multi, x_val_multi, y_val_multi = prepare_data(df, past_history, future_target, STEP)
     print(f'{Fore.GREEN}Data prepared')
     print(f'{Fore.GREEN}x_train shape: {x_train_multi.shape}')
@@ -181,19 +206,17 @@ if __name__ == '__main__':
     print(f'{Fore.CYAN}x_val shape: {x_val_multi.shape}')
     print(f'{Fore.CYAN}y_val shape: {y_val_multi.shape}')
 
-
-
     # set Paths
     path = f"Plots/{table}/{col1}/{future_target}_future_hours"
     Path(path).mkdir(parents=True, exist_ok=True)
     Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
     Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
 
-    NEW_MODEL = False
+    NEW_MODEL = True
     # create  new model
     if NEW_MODEL:
         my_model = create_model(input_shape=x_train_multi.shape[-2:])
-        history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi)
+        history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi, use_es=True)
         plot_history(history)
         my_model.save(f'Models/{col1}_{future_target}_addvantage_diff.h5')
     else:
@@ -202,12 +225,15 @@ if __name__ == '__main__':
     # make predictions
     my_model = tf.keras.models.load_model(f'Models/{col1}_{future_target}_addvantage_diff.h5')
     model_predictions = predict(my_model, x_val_multi, y_val_multi)
+
     print(model_predictions.shape)
     print(model_predictions)
 
     # plot predictions
-    plot_diff_predictions(model_predictions, y_val_multi, col1, save=True, show=False)
+    plot_diff_predictions(model_predictions, y_val_multi, col1, save=True, show=True)
     # plot corrections
-    org = df.iloc[-y_val_multi.shape[0]:][f'opendataset_{col1}']
-    plot_corrections(org, model_predictions, col1, table, save=True, show=False)
+    org = df.iloc[-y_val_multi.shape[0]:]
+    org = df.iloc[-y_val_multi.shape[0]:]
+    org = org[[f'opendataset_{col1}']]
 
+    plot_corrections(org, model_predictions, col1, table, save=True, show=True)

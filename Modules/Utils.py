@@ -8,6 +8,7 @@ import tensorflow as tf
 
 POSTGRESQL_URL = 'postgresql://augeias:augeias@83.212.19.17:5432/augeias'
 
+
 def set_seed(seed: int = 42) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -21,6 +22,7 @@ def set_seed(seed: int = 42) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     print(f"Random seed set as {seed}")
 
+
 def get_data(table):
     sql = f"""select * from "{table}" order by timestamp """
     engine = create_engine(POSTGRESQL_URL)
@@ -33,41 +35,6 @@ def get_data(table):
         return None
 
 
-def multivariate_data(dataset, target, start_index, end_index, history_size,
-                      target_size, step, single_step=False):
-    data = []
-    labels = []
-
-    start_index = start_index + history_size
-    if end_index is None:
-        end_index = len(dataset) - target_size
-
-    for i in range(start_index, end_index):
-        indices = range(i - history_size, i, step)
-        data.append(dataset[indices])
-
-        if single_step:
-            labels.append(target[i + target_size])
-        else:
-            labels.append(target[i:i + target_size])
-
-    return np.array(data), np.array(labels)
 
 
-def create_time_steps(length):
-    return list(range(-length, 0))
 
-
-def multi_step_plot(history, true_future, prediction, STEP):
-    plt.figure(figsize=(18, 6))
-    num_in = create_time_steps(len(history))
-    num_out = len(true_future)
-
-    plt.plot(num_in, np.array(history[:, 1]), label='History')
-    plt.plot(np.arange(num_out) / STEP, np.array(true_future), 'bo',
-             label='True Future')
-    if prediction.any():
-        plt.plot(np.arange(num_out) / STEP, np.array(prediction), 'ro',
-                 label='Predicted Future')
-    plt.legend(loc='upper left')
-    plt.show()
