@@ -1,9 +1,11 @@
 # This is a sample Python script.
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
 from colorama import Fore, init
+from matplotlib.dates import DateFormatter
 from numpy import set_printoptions, sqrt
 from sklearn.metrics import mean_squared_error
 
@@ -23,12 +25,8 @@ set_printoptions(suppress=True)
 rcParams['figure.figsize'] = (20, 10)
 
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def get_data_from_db(table_name, column, name):
-    data = get_data(table_name)
+def get_data_from_db(table_name, column, name, limit=None):
+    data = get_data(table_name, limit)
     if data is not None:
         print(f'{Fore.GREEN}Data loaded')
         data = data[[column]]
@@ -43,8 +41,8 @@ def multivariate_data(dataset, target, start_index, end_index, history_size,
                       target_size, step, single_step=False):
     data = []
     labels = []
-    # dataset = dataset.values
-
+    data_index = []
+    labels_index = []
     start_index = start_index + history_size
     if end_index is None:
         end_index = len(dataset.values) - target_size
@@ -52,24 +50,26 @@ def multivariate_data(dataset, target, start_index, end_index, history_size,
     for i in range(start_index, end_index):
         indices = range(i - history_size, i, step)
         data.append(dataset.values[indices])
+        data_index.append(dataset.index[indices])
 
         if single_step:
             labels.append(target.values[i + target_size])
+            labels_index.append(target.index[i + target_size])
         else:
             labels.append(target.values[i:i + target_size])
+            labels_index.append(target.index[i:i + target_size])
 
-    return np.array(data), np.array(labels)
+    return np.array(data), np.array(labels), np.array(data_index), np.array(labels_index)
 
 
-def prepare_data(data, past_steps, future_steps, step):
-
-    x_train, y_train = multivariate_data(data, data['diff'], 0,
-                                         TRAIN_SPLIT, past_steps,
-                                         future_steps, step)
-    x_val, y_val = multivariate_data(data, data['diff'],
-                                     TRAIN_SPLIT, None, past_steps,
-                                     future_steps, step)
-    return x_train, y_train, x_val, y_val
+def prepare_data(data, past_steps, future_steps, step, train_split):
+    x_train, y_train, x_train_index, y_train_index = multivariate_data(data, data['diff'], 0,
+                                                                       train_split, past_steps,
+                                                                       future_steps, step)
+    x_val, y_val, x_val_index, y_val_index = multivariate_data(data, data['diff'],
+                                                               train_split, None, past_steps,
+                                                               future_steps, step)
+    return x_train, y_train, x_train_index, y_train_index, x_val, y_val, x_val_index, y_val_index
 
 
 def munch_data(data1, data2):
@@ -79,11 +79,11 @@ def munch_data(data1, data2):
     return data
 
 
-def create_model(input_shape):
+def create_model(input_shape, future_steps):
     model = Sequential()
     model.add(LSTM(50, input_shape=input_shape))
     model.add(Dropout(0.2))
-    model.add(Dense(future_target))
+    model.add(Dense(future_steps))
     model.compile(optimizer='adam', loss='mse')
     model.summary()
     return model
@@ -111,31 +111,46 @@ def plot_history(model_history):
     plt.show()
 
 
-def predict(model, x_val, y_val):
+def predict(model, x_val, y_val, scaler):
+    if len(x_val.shape) == 2:
+        x_val = np.expand_dims(x_val, axis=0)
+
     predictions = []
-    for i in range(0, x_val.shape[0]):
-        yhat = model.predict(x_val[i].reshape(1, x_val.shape[1], x_val.shape[2]))
+    for i in range(len(x_val)):
+        yhat = model.predict(x_val[i].reshape(1, x_val.shape[1], x_val.shape[2]), verbose=0)
+        # invert scaling for forecast
         yhat = scaler.inverse_transform(yhat.reshape(-1, 1))
-        y_val[i] = scaler.inverse_transform(y_val_multi[i].reshape(1, -1))
+        # invert scaling for actual
+        if len(y_val.shape) == 1:
+            y_val = scaler.inverse_transform(y_val.reshape(1, -1))
+
+        else:
+            y_val[i] = scaler.inverse_transform(y_val[i].reshape(1, -1))
         predictions.append(yhat)
 
     predictions = np.array(predictions)
     predictions = predictions.reshape(predictions.shape[0], predictions.shape[1])
 
-    return predictions
+    return predictions, y_val
 
 
-def plot_diff_predictions(predictions, y_val, column, save=False, show=False):
+def plot_diff_predictions(predictions, y_val, y_val_index, column, save=False, show=False, future_target=24, table=None,
+                          path=None):
     hours = [i for i in range(0, future_target)]
 
     for hour in hours:
+        ax = plt.gca()
+        print(y_val_index[:, hour].shape)
         rmse = sqrt(mean_squared_error(y_val[:, hour], predictions[:, hour]))
-        plt.plot(y_val[:, hour], label='actual')
-        plt.plot(predictions[:, hour], label='predicted')
+        plt.plot(y_val_index[:, hour], y_val[:, hour], label='actual')
+        plt.plot(y_val_index[:, hour], predictions[:, hour], label='predicted')
+        ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+        plt.xticks(rotation=90)
         plt.title(
-            f'Target: {col1}_diff - Dataset:{table} - RMSE: {rmse:.2f} - Future hour: {hour + 1} - RMSE: {rmse:.2f}')
+            f'Target: {column}_diff - Dataset:{table} - RMSE: {rmse:.2f} - Future hour: {hour + 1} - RMSE: {rmse:.2f}')
         plt.xlabel('Epoch')
         plt.ylabel(f'{column} Difference')
+        plt.tight_layout()
         plt.legend()
         if save:
             plt.savefig(f'{path}/predictions/hour_{hour + 1}.png')
@@ -143,7 +158,7 @@ def plot_diff_predictions(predictions, y_val, column, save=False, show=False):
             plt.show()
 
 
-def plot_corrections(original, predictions, column, table_name, save=False, show=False):
+def plot_corrections(original, predictions, column, table_name, save=False, show=False, future_target=24, path=None):
     hours = [i for i in range(0, future_target)]
     for hour in hours:
         o = original.values.reshape(original.shape[0])
@@ -162,15 +177,14 @@ def plot_corrections(original, predictions, column, table_name, save=False, show
             plt.show()
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=None, past_steps=24, future_steps=24, ):
     Path('Models').mkdir(parents=True, exist_ok=True)
     Path('Data').mkdir(parents=True, exist_ok=True)
     Path('Plots').mkdir(parents=True, exist_ok=True)
-    table = "accuweather_direct"
-    col1 = 'rh'
+    # table = "accuweather_direct"
+    # col1 = col1
     df1 = get_data_from_db(table, col1, 'opendataset')
-    col2 = 'RH'
+    # col2 = 'Air temperature'
     df2 = get_data_from_db('addvantage', col2, 'addvantage')
     if df1 is not None and df2 is not None:
         df = munch_data(df1, df2)
@@ -180,17 +194,23 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # prepare data
-    past_history = 72
-    future_target = 6
+    past_history = past_steps
+    future_target = future_steps
     STEP = 1
     TRAIN_SPLIT = int(len(df) * 0.9)
 
-    x_train_multi, y_train_multi, x_val_multi, y_val_multi = prepare_data(df, past_history, future_target, STEP)
+    x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
+        df, past_history, future_target, STEP, TRAIN_SPLIT)
     print(f'{Fore.GREEN}Data prepared')
     print(f'{Fore.GREEN}x_train shape: {x_train_multi.shape}')
     print(f'{Fore.GREEN}y_train shape: {y_train_multi.shape}')
+    print(f'{Fore.GREEN}x_train_index shape: {x_train__multi_index.shape}')
+    print(f'{Fore.GREEN}y_train_index shape: {y_train_multi_index.shape}')
     print(f'{Fore.GREEN}x_val shape: {x_val_multi.shape}')
     print(f'{Fore.GREEN}y_val shape: {y_val_multi.shape}')
+    print(f'{Fore.GREEN}x_val_index shape: {x_val_multi_index.shape}')
+    print(f'{Fore.GREEN}y_val_index shape: {y_val_multi_index.shape}')
+
     print('Single window of past history : {}'.format(x_train_multi[-1].shape))
     print('Single window of future target : {}'.format(y_train_multi[-1].shape))
 
@@ -212,28 +232,63 @@ if __name__ == '__main__':
     Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
     Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
 
-    NEW_MODEL = True
     # create  new model
-    if NEW_MODEL:
-        my_model = create_model(input_shape=x_train_multi.shape[-2:])
+    if new_train:
+        my_model = create_model(input_shape=x_train_multi.shape[-2:], future_steps=future_target)
         history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi, use_es=True)
         plot_history(history)
         my_model.save(f'Models/{col1}_{future_target}_addvantage_diff.h5')
     else:
+        # make predictions
         my_model = tf.keras.models.load_model(f'Models/{col1}_{future_target}_addvantage_diff.h5')
 
-    # make predictions
-    my_model = tf.keras.models.load_model(f'Models/{col1}_{future_target}_addvantage_diff.h5')
-    model_predictions = predict(my_model, x_val_multi, y_val_multi)
+    model_predictions, y_val_multi = predict(my_model, x_val_multi[-1], y_val_multi[-1], scaler)
+    print(f'{Fore.GREEN}Predictions made')
+    print(f'{Fore.GREEN}model_predictions shape: {model_predictions.shape}')
+    print(f'{Fore.GREEN}y_val_multi shape: {y_val_multi.shape}')
+    rmse = np.sqrt(mean_squared_error(y_val_multi, model_predictions))
+    print(f'{Fore.YELLOW}RMSE: {rmse:.2f}')
 
-    print(model_predictions.shape)
-    print(model_predictions)
+    # ax = plt.gca()
+    #
+    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    # plt.xticks(rotation=90)
+    # plt.plot(y_val_multi_index[-1], y_val_multi[0, :], label='True')
+    # plt.plot(y_val_multi_index[-1], model_predictions[0, :], label='Predicted')
+    # plt.title(f'{col1} {future_target} hour prediction')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
 
-    # plot predictions
-    plot_diff_predictions(model_predictions, y_val_multi, col1, save=True, show=True)
-    # plot corrections
-    org = df.iloc[-y_val_multi.shape[0]:]
-    org = df.iloc[-y_val_multi.shape[0]:]
-    org = org[[f'opendataset_{col1}']]
+    start_date = y_val_multi_index[-1][-1]
+    end_date = start_date + timedelta(hours=future_target)
 
-    plot_corrections(org, model_predictions, col1, table, save=True, show=True)
+    latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
+                                   end_date=end_date)
+    latest_weather_data.sort_index(inplace=True)
+    a = latest_weather_data[col1].values
+    latest_weather_data[col1] = latest_weather_data[col1] + model_predictions[0, :]
+    b = latest_weather_data[col1].values
+
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    plt.xticks(rotation=90)
+    plt.plot(latest_weather_data.index, a, label='actual')
+    plt.plot(latest_weather_data.index, b, label='corrected')
+    plt.title(f'{col1} Correction')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == '__main__':
+    if_you_want_loyalty_buy_a_dog(new_train=False, col1='temp', col2='Air temperature', table='accuweather_direct',
+                                  past_steps=72, future_steps=24)
+    if_you_want_loyalty_buy_a_dog(new_train=False, col1='rh', col2='RH', table='accuweather_direct',
+                                  past_steps=72, future_steps=24)
+    # # plot predictions plot_diff_predictions(model_predictions, y_val_multi, y_val_multi_index, col1, save=False,
+    # show=True, future_target=future_target, col2=col2) # plot corrections org = df.iloc[-y_val_multi.shape[0]:] org
+    # = df.iloc[-y_val_multi.shape[0]:] org = org[[f'opendataset_{col1}']]
+    #
+    # plot_corrections(org, model_predictions, col1, table, save=False, show=True, future_target=future_target,
+    # path=path)

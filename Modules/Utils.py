@@ -23,8 +23,18 @@ def set_seed(seed: int = 42) -> None:
     print(f"Random seed set as {seed}")
 
 
-def get_data(table):
-    sql = f"""select * from "{table}" order by timestamp """
+def to_sql_date(start_date):
+    return start_date.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def get_data(table, limit=None, start_date=None, end_date=None):
+    if limit is None or start_date is None or end_date is None:
+        sql = f"""select * from "{table}" order by timestamp """
+    else:
+        print(f"Getting data from {start_date} to {end_date}")
+        start_date = to_sql_date(start_date)
+        sql = f"""select * from "{table}" where timestamp between '{start_date}' and '{end_date}' order by timestamp desc limit {limit}"""
+
     engine = create_engine(POSTGRESQL_URL)
     try:
         data = pd.read_sql(sql, engine)
@@ -33,8 +43,3 @@ def get_data(table):
     except Exception as e:
         print(e)
         return None
-
-
-
-
-
