@@ -23,7 +23,7 @@ def my_schedule(job1):
         year="*", month="*", day="*", hour="0", minute="10", second="0", timezone="Europe/Athens"
     )
 
-    scheduler.add_job(job1, trigger=trigger_job1, name="daily pull sensor data", args=[True, True])
+    scheduler.add_job(job1, trigger=trigger_job1, name="daily pull sensor data")
 
     scheduler.start()
 
