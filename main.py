@@ -24,6 +24,7 @@ from matplotlib import rcParams, pyplot as plt
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 import tensorflow as tf
+
 init(autoreset=True)
 set_seed(42)
 set_printoptions(suppress=True)
@@ -32,6 +33,7 @@ rcParams['figure.figsize'] = (20, 10)
 load_dotenv('.env')
 POSTGRESQL_URL = os.environ.get("POSTGRESQL_URL")
 engine = create_engine(POSTGRESQL_URL)
+
 
 def get_data_from_db(table_name, column, name, limit=None):
     data = get_data(table_name, limit)
@@ -142,7 +144,7 @@ def predict(model, x_val, y_val, scaler):
     return predictions, y_val
 
 
-def plot_diff_predictions(predictions, y_val, y_val_index, column, save=False, show=False, future_target=24, table=None,
+def plot_diff_predictions(predictions, y_val, y_val_index, column, save=False, show=False, future_target=12, table=None,
                           path=None):
     hours = [i for i in range(0, future_target)]
 
@@ -166,7 +168,7 @@ def plot_diff_predictions(predictions, y_val, y_val_index, column, save=False, s
             plt.show()
 
 
-def plot_corrections(original, predictions, column, table_name, save=False, show=False, future_target=24, path=None):
+def plot_corrections(original, predictions, column, table_name, save=False, show=False, future_target=12, path=None):
     hours = [i for i in range(0, future_target)]
     for hour in hours:
         o = original.values.reshape(original.shape[0])
@@ -185,7 +187,7 @@ def plot_corrections(original, predictions, column, table_name, save=False, show
             plt.show()
 
 
-def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=None, past_steps=24, future_steps=24, ):
+def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
     Path('Models').mkdir(parents=True, exist_ok=True)
     Path('Data').mkdir(parents=True, exist_ok=True)
     Path('Plots').mkdir(parents=True, exist_ok=True)
@@ -279,35 +281,35 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
     latest_weather_data[col1] = latest_weather_data[col1] + model_predictions[0, :]
     b = latest_weather_data[col1].values
 
-    # ax = plt.gca()
-    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
-    # plt.xticks(rotation=90)
-    # plt.plot(latest_weather_data.index, a, label='actual')
-    # plt.plot(latest_weather_data.index, b, label='corrected')
-    # plt.title(f'{col1} Correction')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-    return latest_weather_data[col1] ,start_date, end_date
+    ax = plt.gca()
+    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    plt.xticks(rotation=90)
+    plt.plot(latest_weather_data.index, a, label='actual')
+    plt.plot(latest_weather_data.index, b, label='corrected')
+    plt.title(f'{col1} Correction')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    return latest_weather_data[col1], start_date, end_date
 
 
 def make_corrections():
     try:
         temp, start, end = if_you_want_loyalty_buy_a_dog(new_train=False, col1='temp', col2='Air temperature',
-                                             table='accuweather_direct',
-                                             past_steps=72, future_steps=24)
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
         rh, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='rh', col2='RH', table='accuweather_direct',
-                                           past_steps=72, future_steps=24)
+                                                 past_steps=72, future_steps=12)
 
         precipitation, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='precipitation', col2='Precipitation',
-                                                      table='accuweather_direct',
-                                                      past_steps=72, future_steps=24)
+                                                            table='accuweather_direct',
+                                                            past_steps=72, future_steps=12)
         wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
-                                                   table='accuweather_direct',
-                                                   past_steps=72, future_steps=24)
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
         evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
-                                                           table='accuweather_direct',
-                                                           past_steps=72, future_steps=24)
+                                                                 table='accuweather_direct',
+                                                                 past_steps=72, future_steps=12)
         # print(temp)
         # print(rh)
         #
@@ -316,7 +318,8 @@ def make_corrections():
         # print(evapotranspiration)
         df = pd.concat([temp, rh, precipitation, wind_speed, evapotranspiration], axis=1)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
-        df.to_csv(f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
+        df.to_csv(
+            f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
         df.to_sql('accuweather_corrected', con=engine, if_exists='replace', index=True)
     except Exception as e:
         print(e)
@@ -325,11 +328,5 @@ def make_corrections():
 
 
 if __name__ == '__main__':
-    #my_schedule(make_corrections)
-    make_corrections()
-    # # plot predictions plot_diff_predictions(model_predictions, y_val_multi, y_val_multi_index, col1, save=False,
-    # show=True, future_target=future_target, col2=col2) # plot corrections org = df.iloc[-y_val_multi.shape[0]:] org
-    # = df.iloc[-y_val_multi.shape[0]:] org = org[[f'opendataset_{col1}']]
-    #
-    # plot_corrections(org, model_predictions, col1, table, save=False, show=True, future_target=future_target,
-    # path=path)
+    my_schedule(make_corrections)
+
