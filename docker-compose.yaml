@@ -1,0 +1,5 @@
+version: "3.9"
+services:
+  augeias-corrections:
+    build: .
+    restart: always

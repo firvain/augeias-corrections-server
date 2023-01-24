@@ -1,14 +1,17 @@
 # This is a sample Python script.
+import os
 import sys
 from datetime import timedelta
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from colorama import Fore, init
 from matplotlib.dates import DateFormatter
 from numpy import set_printoptions, sqrt
 from sklearn.metrics import mean_squared_error
 
+from Modules.Scheduler import my_schedule
 from Modules.Utils import get_data, set_seed
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
@@ -17,13 +20,18 @@ from keras.layers import LSTM
 from keras.layers import Dropout
 from keras.callbacks import EarlyStopping
 from matplotlib import rcParams, pyplot as plt
-import tensorflow as tf
 
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+import tensorflow as tf
 init(autoreset=True)
 set_seed(42)
 set_printoptions(suppress=True)
 rcParams['figure.figsize'] = (20, 10)
 
+load_dotenv('.env')
+POSTGRESQL_URL = os.environ.get("POSTGRESQL_URL")
+engine = create_engine(POSTGRESQL_URL)
 
 def get_data_from_db(table_name, column, name, limit=None):
     data = get_data(table_name, limit)
@@ -188,7 +196,7 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
     df2 = get_data_from_db('addvantage', col2, 'addvantage')
     if df1 is not None and df2 is not None:
         df = munch_data(df1, df2)
-        df.to_csv(f'Data/{table}_addvantage_diff.csv')
+        df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
     else:
         print(f'{Fore.RED}No data to process')
         sys.exit(1)
@@ -236,7 +244,7 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
     if new_train:
         my_model = create_model(input_shape=x_train_multi.shape[-2:], future_steps=future_target)
         history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi, use_es=True)
-        plot_history(history)
+        # plot_history(history)
         my_model.save(f'Models/{col1}_{future_target}_addvantage_diff.h5')
     else:
         # make predictions
@@ -266,26 +274,58 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
     latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
                                    end_date=end_date)
     latest_weather_data.sort_index(inplace=True)
+
     a = latest_weather_data[col1].values
     latest_weather_data[col1] = latest_weather_data[col1] + model_predictions[0, :]
     b = latest_weather_data[col1].values
 
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
-    plt.xticks(rotation=90)
-    plt.plot(latest_weather_data.index, a, label='actual')
-    plt.plot(latest_weather_data.index, b, label='corrected')
-    plt.title(f'{col1} Correction')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # ax = plt.gca()
+    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    # plt.xticks(rotation=90)
+    # plt.plot(latest_weather_data.index, a, label='actual')
+    # plt.plot(latest_weather_data.index, b, label='corrected')
+    # plt.title(f'{col1} Correction')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+    return latest_weather_data[col1] ,start_date, end_date
+
+
+def make_corrections():
+    try:
+        temp, start, end = if_you_want_loyalty_buy_a_dog(new_train=False, col1='temp', col2='Air temperature',
+                                             table='accuweather_direct',
+                                             past_steps=72, future_steps=24)
+        rh, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='rh', col2='RH', table='accuweather_direct',
+                                           past_steps=72, future_steps=24)
+
+        precipitation, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='precipitation', col2='Precipitation',
+                                                      table='accuweather_direct',
+                                                      past_steps=72, future_steps=24)
+        wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
+                                                   table='accuweather_direct',
+                                                   past_steps=72, future_steps=24)
+        evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
+                                                           table='accuweather_direct',
+                                                           past_steps=72, future_steps=24)
+        # print(temp)
+        # print(rh)
+        #
+        # print(precipitation)
+        # print(wind_speed)
+        # print(evapotranspiration)
+        df = pd.concat([temp, rh, precipitation, wind_speed, evapotranspiration], axis=1)
+        df.to_csv(f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
+        df.to_sql('accuweather_corrected', con=engine, if_exists='replace', index=True)
+    except Exception as e:
+        print(e)
+        print(f'{Fore.RED}Something went wrong')
+        return
 
 
 if __name__ == '__main__':
-    if_you_want_loyalty_buy_a_dog(new_train=False, col1='temp', col2='Air temperature', table='accuweather_direct',
-                                  past_steps=72, future_steps=24)
-    if_you_want_loyalty_buy_a_dog(new_train=False, col1='rh', col2='RH', table='accuweather_direct',
-                                  past_steps=72, future_steps=24)
+    my_schedule(make_corrections)
+
     # # plot predictions plot_diff_predictions(model_predictions, y_val_multi, y_val_multi_index, col1, save=False,
     # show=True, future_target=future_target, col2=col2) # plot corrections org = df.iloc[-y_val_multi.shape[0]:] org
     # = df.iloc[-y_val_multi.shape[0]:] org = org[[f'opendataset_{col1}']]
