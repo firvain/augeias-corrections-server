@@ -315,6 +315,7 @@ def make_corrections():
         # print(wind_speed)
         # print(evapotranspiration)
         df = pd.concat([temp, rh, precipitation, wind_speed, evapotranspiration], axis=1)
+        Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df.to_csv(f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
         df.to_sql('accuweather_corrected', con=engine, if_exists='replace', index=True)
     except Exception as e:
