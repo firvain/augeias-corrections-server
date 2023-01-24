@@ -95,3 +95,4 @@ fabric.properties
 Data/
 Plots/
 scheduler.log
+**/__pycache__/

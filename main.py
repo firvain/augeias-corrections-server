@@ -325,8 +325,8 @@ def make_corrections():
 
 
 if __name__ == '__main__':
-    my_schedule(make_corrections)
-
+    #my_schedule(make_corrections)
+    make_corrections()
     # # plot predictions plot_diff_predictions(model_predictions, y_val_multi, y_val_multi_index, col1, save=False,
     # show=True, future_target=future_target, col2=col2) # plot corrections org = df.iloc[-y_val_multi.shape[0]:] org
     # = df.iloc[-y_val_multi.shape[0]:] org = org[[f'opendataset_{col1}']]
