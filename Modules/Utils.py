@@ -33,7 +33,8 @@ def get_data(table, limit=None, start_date=None, end_date=None):
     else:
         print(f"Getting data from {start_date} to {end_date}")
         start_date = to_sql_date(start_date)
-        sql = f"""select * from "{table}" where timestamp between '{start_date}' and '{end_date}' order by timestamp desc limit {limit}"""
+        sql = f"""select * from "{table}" where timestamp >= '{start_date}' and timestamp < '{end_date}' order by timestamp desc limit {limit}"""
+
 
     engine = create_engine(POSTGRESQL_URL)
     try:
