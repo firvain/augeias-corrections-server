@@ -407,5 +407,5 @@ def make_corrections():
 
 
 if __name__ == '__main__':
-    my_schedule(make_corrections)
-    # make_corrections()
+    # my_schedule(make_corrections)
+    make_corrections()
