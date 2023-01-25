@@ -307,16 +307,16 @@ def make_corrections():
         wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
                                                          table='accuweather_direct',
                                                          past_steps=72, future_steps=12)
-        evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
-                                                                 table='accuweather_direct',
-                                                                 past_steps=72, future_steps=12)
+        # evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
+        #                                                          table='accuweather_direct',
+        #                                                          past_steps=72, future_steps=12)
         # print(temp)
         # print(rh)
         #
         # print(precipitation)
         # print(wind_speed)
         # print(evapotranspiration)
-        df = pd.concat([temp, rh, precipitation, wind_speed, evapotranspiration], axis=1)
+        df = pd.concat([temp, rh, precipitation, wind_speed], axis=1)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df.to_csv(
             f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
