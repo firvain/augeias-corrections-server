@@ -320,7 +320,7 @@ def make_corrections():
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df.to_csv(
             f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
-        df.to_sql('accuweather_corrected', con=engine, if_exists='replace', index=True)
+        df.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
     except Exception as e:
         print(e)
         print(f'{Fore.RED}Something went wrong')
