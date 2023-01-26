@@ -210,15 +210,15 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
     b = latest_weather_data[col1].values
     print(f'{Fore.GREEN}Correction made to latest weather data')
     #
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
-    plt.xticks(rotation=90)
-    plt.plot(latest_weather_data.index, a, label='actual')
-    plt.plot(latest_weather_data.index, b, label='corrected')
-    plt.title(f'{col1} Correction')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    # ax = plt.gca()
+    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    # plt.xticks(rotation=90)
+    # plt.plot(latest_weather_data.index, a, label='actual')
+    # plt.plot(latest_weather_data.index, b, label='corrected')
+    # plt.title(f'{col1} Correction')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
     return latest_weather_data[col1], start_date, end_date
 
 
@@ -394,8 +394,10 @@ def make_corrections():
         # evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
         #                                                          table='accuweather_direct',
         #                                                          past_steps=72, future_steps=12)
-
-        df = pd.concat([temp, rh, precipitation, wind_speed], axis=1)
+        solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='solar_irradiance', col2='Pyranometer',
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
+        df = pd.concat([temp, rh, precipitation, wind_speed, solar_irradiance], axis=1)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df.to_csv(
             f'Data/corrections/corrections_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
