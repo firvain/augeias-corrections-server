@@ -96,3 +96,4 @@ Data/
 Plots/
 scheduler.log
 **/__pycache__/
+*.png

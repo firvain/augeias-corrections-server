@@ -41,7 +41,7 @@ select q.timestamp,
 
 from q
          inner join addvantage b on q.timestamp = b.timestamp
-order by b.timestamp asc"""
+order by b.timestamp asc limit 24"""
 
 data = pd.read_sql(sql, engine)
 data = data.set_index('timestamp')
@@ -52,31 +52,31 @@ mape = mean_absolute_error(temp['temp_accuweather'], temp['temp_addvantage'])*10
 print(f"MAPE for temperature is {mape:.2f}")
 mape_corrected = mean_absolute_error(temp['temp_accuweather_corrected'], temp['temp_addvantage'])*100
 print(f"MAPE for temperature corrected is {mape_corrected:0.2f}")
-# temp.plot()
-# plt.savefig('temp.png')
+temp.plot()
+plt.savefig('temp.png')
 humidity = data[['humidity_accuweather', 'humidity_accuweather_corrected', 'hummidity_addvantage']]
 mape = mean_absolute_error(humidity['humidity_accuweather'], humidity['hummidity_addvantage'])*100
 print(f"MAPE for humidity is {mape:.2f}")
 mape_corrected = mean_absolute_error(humidity['humidity_accuweather_corrected'], humidity['hummidity_addvantage'])*100
 print(f"MAPE for humidity corrected is {mape_corrected:0.2f}")
 
-# humidity.plot()
-# plt.savefig('humidity.png')
+humidity.plot()
+plt.savefig('humidity.png')
 precipitation = data[['precipitation_accuweather', 'precipitation_accuweather_corrected', 'precipitation_advantage']]
 mape = mean_absolute_error(precipitation['precipitation_accuweather'], precipitation['precipitation_advantage'])*100
 print(f"MAPE for precipitation is {mape:.2f}")
 mape_corrected = mean_absolute_error(precipitation['precipitation_accuweather_corrected'], precipitation['precipitation_advantage'])*100
 print(f"MAPE for precipitation corrected is {mape_corrected:0.2f}")
 
-# precipitation.plot()
-# plt.savefig('precipitation.png')
+precipitation.plot()
+plt.savefig('precipitation.png')
 wind_speed = data[['wind_speed_accuweather', 'wind_speed_accuweather_corrected', 'wind_speed_addvantage']]
 mape = mean_absolute_error(wind_speed['wind_speed_accuweather'], wind_speed['wind_speed_addvantage'])*100
 print(f"MAPE for wind speed is {mape:0.2f}")
 mape_corrected = mean_absolute_error(wind_speed['wind_speed_accuweather_corrected'], wind_speed['wind_speed_addvantage'])*100
 print(f"MAPE for wind speed corrected is {mape_corrected:0.2f}")
-# wind_speed.plot()
-# plt.savefig('wind_speed.png')
+wind_speed.plot()
+plt.savefig('wind_speed.png')
 # solar_irradiance = data[['solar_irradiance_accuweather', 'solar_irradiance_corrected', 'solar_irradiance_advantage']]
 # solar_irradiance.plot()
 # plt.savefig('solar_irradiance.png')

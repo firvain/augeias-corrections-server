@@ -205,7 +205,7 @@ def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=N
 
     a = latest_weather_data[col1].values
 
-    latest_weather_data[col1] = latest_weather_data[col1] + model_predictions[0, :latest_weather_data.shape[0]]
+    latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
 
     b = latest_weather_data[col1].values
     print(f'{Fore.GREEN}Correction made to latest weather data')
