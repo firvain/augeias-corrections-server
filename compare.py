@@ -77,8 +77,8 @@ mape_corrected = mean_absolute_error(wind_speed['wind_speed_accuweather_correcte
 print(f"MAPE for wind speed corrected is {mape_corrected:0.2f}")
 wind_speed.plot()
 plt.savefig('wind_speed.png')
-# solar_irradiance = data[['solar_irradiance_accuweather', 'solar_irradiance_corrected', 'solar_irradiance_advantage']]
-# solar_irradiance.plot()
-# plt.savefig('solar_irradiance.png')
+solar_irradiance = data[['solar_irradiance_accuweather', 'solar_irradiance_corrected', 'solar_irradiance_advantage']]
+solar_irradiance.plot()
+plt.savefig('solar_irradiance.png')
 
 
