@@ -111,112 +111,6 @@ def predict(model, x_val, scaler):
     return predictions
 
 
-def if_you_want_loyalty_buy_a_dog(new_train=False, col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
-    Path('Models').mkdir(parents=True, exist_ok=True)
-    Path('Data').mkdir(parents=True, exist_ok=True)
-    Path('Plots').mkdir(parents=True, exist_ok=True)
-    # table = "accuweather_direct"
-    # col1 = col1
-    df1 = get_data_from_db(table, col1, 'opendataset')
-    # col2 = 'Air temperature'
-    df2 = get_data_from_db('addvantage', col2, 'addvantage')
-
-    agg = {'Wind speed 100 Hz': "mean", 'RH': "mean",
-           'Air temperature': "mean",
-           'Leaf Wetness': "mean", 'Soil conductivity_25cm': "mean",
-           'Soil conductivity_15cm': "mean",
-           'Soil conductivity_5cm': "mean",
-           'Soil temperature_25cm': "mean",
-           'Soil temperature_15cm': "mean",
-           'Soil temperature_5cm': "mean", 'Soil moisture_25cm': "mean",
-           'Soil moisture_15cm': "mean", 'Soil moisture_5cm': "mean",
-           'Precipitation': "sum", 'Pyranometer': "mean"
-           }
-    df3 = get_new_addvantage_data(drop_nan=True, aggreg=agg, past_hours=24)
-    df3 = df3[[col2]]
-    df3.rename(columns={col2: f'addvantage_{col2}'}, inplace=True)
-    df3.index = df3.index.tz_convert('UTC')
-
-    df2 = pd.concat([df2, df3], axis=0)
-    df2 = df2[~df2.index.duplicated(keep='first')]
-    df2.sort_index(inplace=True)
-
-
-    if df1 is not None and df2 is not None:
-        df = munch_data(df1, df2)
-        df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
-    else:
-        print(f'{Fore.RED}No data to process')
-        sys.exit(1)
-
-    # prepare data
-    past_history = past_steps
-    future_target = future_steps
-    STEP = 1
-    TRAIN_SPLIT = int(len(df) * 0.9)
-
-    x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
-        df, past_history, future_target, STEP, TRAIN_SPLIT)
-
-    # scale data
-    scaler = MinMaxScaler()
-    x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
-    # x_val_multi = scaler.transform(x_val_multi.reshape(-1, 1)).reshape(x_val_multi.shape)
-    # y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
-    # y_val_multi = scaler.transform(y_val_multi.reshape(-1, 1)).reshape(y_val_multi.shape)
-    print(f'{Fore.CYAN}Data scaled')
-    print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
-
-    # set Paths
-    path = f"Plots/{table}/{col1}/{future_target}_future_hours"
-    Path(path).mkdir(parents=True, exist_ok=True)
-    Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
-    Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
-
-    # make predictions
-    my_model = tf.keras.models.load_model(f'Models/{col1}_{future_target}_addvantage_diff.h5')
-
-    last_window = df.iloc[-past_steps:, :]
-
-    last_window = last_window.values.reshape(1, last_window.shape[0], last_window.shape[1])
-    print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
-
-    inp = last_window.reshape(-1, 1)
-    print(f'{Fore.GREEN}inp shape: {inp.shape}')
-
-    inp = scaler.transform(inp)
-    inp = inp.reshape(1, past_steps, last_window.shape[2])
-    print(f'{Fore.YELLOW}Input shape: {inp.shape}')
-    y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
-    model_predictions = predict(my_model, inp, scaler)
-    print(f'{Fore.GREEN}Predictions made')
-    print(f'{Fore.GREEN}model_predictions shape: {model_predictions.shape}')
-
-    start_date = df.iloc[-past_steps:, :].index[-1] + timedelta(hours=1)
-    end_date = start_date + timedelta(hours=future_target)
-
-    latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
-                                   end_date=end_date)
-    latest_weather_data.sort_index(inplace=True)
-
-    # a = latest_weather_data[col1].values
-
-    latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
-
-    # b = latest_weather_data[col1].values
-    print(f'{Fore.GREEN}Correction made to latest weather data')
-    #
-    # ax = plt.gca()
-    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
-    # plt.xticks(rotation=90)
-    # plt.plot(latest_weather_data.index, a, label='actual')
-    # plt.plot(latest_weather_data.index, b, label='corrected')
-    # plt.title(f'{col1} Correction')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-    return latest_weather_data[col1], start_date, end_date
-
 
 def get_addvantage_session_id():
     response = requests.get(
@@ -237,6 +131,7 @@ def get_addvantage_data_from_server(session_id, sensor_id, past_hours=12):
     current_minus = current_datetime - timedelta(hours=past_hours)
     before_datetime = current_minus.replace(microsecond=0)
     print(f"before_datetime: {before_datetime}")
+
     response = requests.get(
         f"{base_url}function=getdata&session-id={session_id}&id={sensor_id}&date={before_datetime.strftime('%Y%m%dT%H:%M:%S')}&slots={slots}&cache=y&mode=t")
     json_dict = xmltodict.parse(response.content)
@@ -371,8 +266,7 @@ def get_new_addvantage_data(
     df_out['application_group'] = '68ead743e6d6e531352fe86280918678761982bc'
 
     return df_out
-
-def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
+def if_you_want_loyalty_buy_a_dog(col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
     Path('Models').mkdir(parents=True, exist_ok=True)
     Path('Data').mkdir(parents=True, exist_ok=True)
     Path('Plots').mkdir(parents=True, exist_ok=True)
@@ -422,9 +316,11 @@ def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=N
     # scale data
     scaler = MinMaxScaler()
     x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
+    # x_val_multi = scaler.transform(x_val_multi.reshape(-1, 1)).reshape(x_val_multi.shape)
+    # y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
+    # y_val_multi = scaler.transform(y_val_multi.reshape(-1, 1)).reshape(y_val_multi.shape)
     print(f'{Fore.CYAN}Data scaled')
     print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
-
 
     # set Paths
     path = f"Plots/{table}/{col1}/{future_target}_future_hours"
@@ -433,7 +329,7 @@ def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=N
     Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
 
     # make predictions
-    my_model = tf.keras.models.load_model(f'Models/openweather_direct_{col1}_{future_target}_addvantage_diff.h5')
+    my_model = tf.keras.models.load_model(f'Models/{col1}_{future_target}_addvantage_diff.h5')
 
     last_window = df.iloc[-past_steps:, :]
 
@@ -446,7 +342,6 @@ def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=N
     inp = scaler.transform(inp)
     inp = inp.reshape(1, past_steps, last_window.shape[2])
     print(f'{Fore.YELLOW}Input shape: {inp.shape}')
-
     y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
     model_predictions = predict(my_model, inp, scaler)
     print(f'{Fore.GREEN}Predictions made')
@@ -462,6 +357,123 @@ def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=N
     # a = latest_weather_data[col1].values
 
     latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
+
+    # b = latest_weather_data[col1].values
+    print(f'{Fore.GREEN}Correction made to latest weather data')
+    #
+    # ax = plt.gca()
+    # ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+    # plt.xticks(rotation=90)
+    # plt.plot(latest_weather_data.index, a, label='actual')
+    # plt.plot(latest_weather_data.index, b, label='corrected')
+    # plt.title(f'{col1} Correction')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+    return latest_weather_data[col1], start_date, end_date
+
+
+def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
+    Path('Models').mkdir(parents=True, exist_ok=True)
+    Path('Data').mkdir(parents=True, exist_ok=True)
+    Path('Plots').mkdir(parents=True, exist_ok=True)
+    # table = "accuweather_direct"
+    # col1 = col1
+    df1 = get_data_from_db(table, col1, 'opendataset') # 'openweather_direct data'
+    # col2 = 'Air temperature'
+    df2 = get_data_from_db('addvantage', col2, 'addvantage') # 'addvantage data'
+
+    agg = {'Wind speed 100 Hz': "mean", 'RH': "mean",
+           'Air temperature': "mean",
+           'Leaf Wetness': "mean", 'Soil conductivity_25cm': "mean",
+           'Soil conductivity_15cm': "mean",
+           'Soil conductivity_5cm': "mean",
+           'Soil temperature_25cm': "mean",
+           'Soil temperature_15cm': "mean",
+           'Soil temperature_5cm': "mean", 'Soil moisture_25cm': "mean",
+           'Soil moisture_15cm': "mean", 'Soil moisture_5cm': "mean",
+           'Precipitation': "sum", 'Pyranometer': "mean"
+           }
+    df3 = get_new_addvantage_data(drop_nan=True, aggreg=agg, past_hours=24)
+    df3 = df3[[col2]]
+    df3.rename(columns={col2: f'addvantage_{col2}'}, inplace=True)
+    df3.index = df3.index.tz_convert('UTC')
+    df2 = pd.concat([df2, df3], axis=0)
+    df2 = df2[~df2.index.duplicated(keep='first')]
+    df2.sort_index(inplace=True)
+
+
+
+    if df1 is not None and df2 is not None:
+        df = munch_data(df1, df2)
+        df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
+    else:
+        print(f'{Fore.RED}No data to process')
+        sys.exit(1)
+    print(f'{Fore.CYAN}Data processed')
+
+
+    # prepare data
+    past_history = past_steps
+    future_target = future_steps
+    STEP = 1
+    TRAIN_SPLIT = int(len(df) * 0.9)
+
+    x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
+        df, past_history, future_target, STEP, TRAIN_SPLIT)
+
+    # scale data
+    scaler = MinMaxScaler()
+    x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
+    print(f'{Fore.CYAN}Data scaled')
+    print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
+
+
+    # set Paths
+    path = f"Plots/{table}/{col1}/{future_target}_future_hours"
+    Path(path).mkdir(parents=True, exist_ok=True)
+    Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
+    Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
+
+    # make predictions
+    my_model = tf.keras.models.load_model(f'Models/openweather_direct_{col1}_{future_target}_addvantage_diff.h5')
+
+    last_window = df.iloc[-past_steps:, :]
+    print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
+    print(f'{Fore.GREEN}Last window index: {last_window.index}')
+
+
+
+    last_window = last_window.values.reshape(1, last_window.shape[0], last_window.shape[1])
+
+    print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
+
+    inp = last_window.reshape(-1, 1)
+    print(f'{Fore.GREEN}inp shape: {inp.shape}')
+
+    inp = scaler.transform(inp)
+    inp = inp.reshape(1, past_steps, last_window.shape[2])
+    print(f'{Fore.YELLOW}Input shape: {inp.shape}')
+
+    y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
+    model_predictions = predict(my_model, inp, scaler)
+    print(f'{Fore.GREEN}Predictions made')
+    print(f'{Fore.GREEN}model_predictions shape: {model_predictions.shape}')
+    print(f'{Fore.GREEN}model_predictions: {model_predictions}')
+
+    start_date = df.iloc[-past_steps:, :].index[-1] + timedelta(hours=1)
+    end_date = start_date + timedelta(hours=future_target)
+
+    latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
+                                   end_date=end_date)
+    latest_weather_data.sort_index(inplace=True)
+    # print(f'{Fore.GREEN}Latest weather data shape: {latest_weather_data.shape}')
+    # print(f'{Fore.GREEN}Latest weather data: {latest_weather_data}')
+
+    # a = latest_weather_data[col1].values
+
+    latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
+    # print(f'{Fore.GREEN}Latest weather data shape: {latest_weather_data.shape}')
 
     # b = latest_weather_data[col1].values
     # print(f'{Fore.GREEN}Correction made to latest weather data')
@@ -481,39 +493,39 @@ def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=N
 def make_corrections():
     try:
         # accuweather
-        temp, start, end = if_you_want_loyalty_buy_a_dog(new_train=False, col1='temp', col2='Air temperature',
+        temp, start, end = if_you_want_loyalty_buy_a_dog(col1='temp', col2='Air temperature',
                                                          table='accuweather_direct',
                                                          past_steps=72, future_steps=12)
-        rh, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='rh', col2='RH', table='accuweather_direct',
+        rh, _, _ = if_you_want_loyalty_buy_a_dog(col1='rh', col2='RH', table='accuweather_direct',
                                                  past_steps=72, future_steps=12)
 
-        precipitation, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='precipitation', col2='Precipitation',
+        precipitation, _, _ = if_you_want_loyalty_buy_a_dog(col1='precipitation', col2='Precipitation',
                                                             table='accuweather_direct',
                                                             past_steps=72, future_steps=12)
-        wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
+        wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(col1='wind_speed', col2='Wind speed 100 Hz',
                                                          table='accuweather_direct',
                                                          past_steps=72, future_steps=12)
         # evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
         #                                                          table='accuweather_direct',
         #                                                          past_steps=72, future_steps=12)
-        solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='solar_irradiance', col2='Pyranometer',
+        solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(col1='solar_irradiance', col2='Pyranometer',
                                                          table='accuweather_direct',
                                                          past_steps=72, future_steps=12)
         df1 = pd.concat([temp, rh, precipitation, wind_speed, solar_irradiance], axis=1)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df1.to_csv(
             f'Data/corrections/corrections_accuweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
-        #Add to database
+        # Add to database
         df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
 
         # openweather
         temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
                                                          table='openweather_direct',
                                                          past_steps=72, future_steps=12)
-        rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='humidity', col2='RH', table='openweather_direct',
+        rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='humidity', col2='RH', table='openweather_direct',
                                                  past_steps=72, future_steps=12)
 
-        wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
+        wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='wind_speed', col2='Wind speed 100 Hz',
                                                          table='openweather_direct',
                                                          past_steps=72, future_steps=12)
         df2 = pd.concat([temp_openweather, rh_openweather, wind_speed_openweather], axis=1)
@@ -524,7 +536,7 @@ def make_corrections():
         df2.to_csv(
             f'Data/corrections/corrections_openweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
 
-        #Add to database
+        # Add to database
         df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
     except Exception as e:
         print(e)

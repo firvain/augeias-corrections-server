@@ -149,114 +149,114 @@ def prepare_data(data, past_steps, future_steps, step, train_split):
     return x_train, y_train, x_train_index, y_train_index, x_val, y_val, x_val_index, y_val_index
 
 
-# dataset = 'openweather_direct'
-# col1 = 'wind_speed'
-# col2 = 'RH'
+dataset = 'openweather_direct'
+col1 = 'wind_speed'
+col2 = 'Wind speed 100 Hz'
+
+table = 'openweather_direct'
+df1 = get_data_from_db(table, col1, 'opendataset')
+print(f'{Fore.GREEN}opendataset shape: ', df1.shape)
+df2 = get_data_from_db('addvantage', col2, 'addvantage')
+print(f'{Fore.GREEN}addvantage shape: ', df2.shape)
+
+if df1 is not None and df2 is not None:
+    df = munch_data(df1, df2)
+    # df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
+else:
+    print(f'{Fore.RED}No data to process')
+    sys.exit(1)
+
+
+
+
+# data.drop(columns=['diff'], inplace=True)
+df.sort_index(inplace=True)
+
+print(f'{Fore.GREEN}Data shape: ', df.shape)
+
+# df = df.loc['2022-10-01 ':, :]
+print(f'{Fore.GREEN}Data shape: ', df.shape)
+# df['hour'] = [df.index[i].hour for i in range(len(df))]
+# df['month'] = [df.index[i].month for i in range(len(df))]
+# df['dayofweek'] = [df.index[i].day for i in range(len(df))]
+# df['dayofyear'] = [df.index[i].dayofyear for i in range(len(df))]
+# df['weekofyear'] = [df.index[i].weekofyear for i in range(len(df))]
+# df['quarter'] = [df.index[i].quarter for i in range(len(df))]
+
+past_history = 72
+future_target = 12
+STEP = 1
+TRAIN_SPLIT = int(len(df) * 0.9)
+print(f'{Fore.YELLOW}Train split: ', TRAIN_SPLIT)
+
+x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
+    df, past_history, future_target, STEP, TRAIN_SPLIT)
+print(f'{Fore.GREEN}Data prepared')
+print(f'{Fore.GREEN}x_train shape: {x_train_multi.shape}')
+print(f'{Fore.GREEN}y_train shape: {y_train_multi.shape}')
+print(f'{Fore.GREEN}x_train_index shape: {x_train__multi_index.shape}')
+print(f'{Fore.GREEN}y_train_index shape: {y_train_multi_index.shape}')
+print(f'{Fore.GREEN}x_val shape: {x_val_multi.shape}')
+print(f'{Fore.GREEN}y_val shape: {y_val_multi.shape}')
+print(f'{Fore.GREEN}x_val_index shape: {x_val_multi_index.shape}')
+print(f'{Fore.GREEN}y_val_index shape: {y_val_multi_index.shape}')
+
+print('Single window of past history : {}'.format(x_train_multi[-1].shape))
+print('Single window of future target : {}'.format(y_train_multi[-1].shape))
+
+scaler = MinMaxScaler()
+x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
+x_val_multi = scaler.transform(x_val_multi.reshape(-1, 1)).reshape(x_val_multi.shape)
+y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
+y_val_multi = scaler.transform(y_val_multi.reshape(-1, 1)).reshape(y_val_multi.shape)
+
+
+def create_model(input_shape, future_steps):
+    model = Sequential()
+    model.add(LSTM(50, input_shape=input_shape))
+    model.add(Dropout(0.2))
+    model.add(Dense(future_steps))
+    model.compile(optimizer='adam', loss='mse')
+    model.summary()
+    return model
+
+
+def train_model(model, x_train, y_train, x_val, y_val, use_es=True):
+    if use_es:
+        es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
+    else:
+        es = None
+
+    return model.fit(x_train, y_train, epochs=20,
+                     batch_size=1, validation_data=(x_val, y_val),
+                     verbose=1, shuffle=False, callbacks=[es])
+
+
+def plot_history(model_history):
+    loss = model_history.history['loss']
+    val_loss = model_history.history['val_loss']
+    epochs = range(len(loss))
+    plt.figure()
+    plt.plot(epochs, loss, 'b', label='Training loss')
+    plt.plot(epochs, val_loss, 'r', label='Validation loss')
+    plt.title('Training and validation loss')
+    plt.legend()
+    plt.show()
 #
-# table = 'openweather_direct'
-# df1 = get_data_from_db(table, col1, 'opendataset')
-# print(f'{Fore.GREEN}opendataset shape: ', df1.shape)
-# df2 = get_data_from_db('addvantage', col2, 'addvantage')
-# print(f'{Fore.GREEN}addvantage shape: ', df2.shape)
 #
-# if df1 is not None and df2 is not None:
-#     df = munch_data(df1, df2)
-#     df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
-# else:
-#     print(f'{Fore.RED}No data to process')
-#     sys.exit(1)
-#
-#
-#
-#
-# # data.drop(columns=['diff'], inplace=True)
-# df.sort_index(inplace=True)
-#
-# print(f'{Fore.GREEN}Data shape: ', df.shape)
-#
-# # df = df.loc['2022-10-01 ':, :]
-# print(f'{Fore.GREEN}Data shape: ', df.shape)
-# # df['hour'] = [df.index[i].hour for i in range(len(df))]
-# # df['month'] = [df.index[i].month for i in range(len(df))]
-# # df['dayofweek'] = [df.index[i].day for i in range(len(df))]
-# # df['dayofyear'] = [df.index[i].dayofyear for i in range(len(df))]
-# # df['weekofyear'] = [df.index[i].weekofyear for i in range(len(df))]
-# # df['quarter'] = [df.index[i].quarter for i in range(len(df))]
-#
-# past_history = 72
-# future_target = 12
-# STEP = 1
-# TRAIN_SPLIT = int(len(df) * 0.9)
-# print(f'{Fore.YELLOW}Train split: ', TRAIN_SPLIT)
-#
-# x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
-#     df, past_history, future_target, STEP, TRAIN_SPLIT)
-# print(f'{Fore.GREEN}Data prepared')
-# print(f'{Fore.GREEN}x_train shape: {x_train_multi.shape}')
-# print(f'{Fore.GREEN}y_train shape: {y_train_multi.shape}')
-# print(f'{Fore.GREEN}x_train_index shape: {x_train__multi_index.shape}')
-# print(f'{Fore.GREEN}y_train_index shape: {y_train_multi_index.shape}')
-# print(f'{Fore.GREEN}x_val shape: {x_val_multi.shape}')
-# print(f'{Fore.GREEN}y_val shape: {y_val_multi.shape}')
-# print(f'{Fore.GREEN}x_val_index shape: {x_val_multi_index.shape}')
-# print(f'{Fore.GREEN}y_val_index shape: {y_val_multi_index.shape}')
-#
-# print('Single window of past history : {}'.format(x_train_multi[-1].shape))
-# print('Single window of future target : {}'.format(y_train_multi[-1].shape))
-#
-# scaler = MinMaxScaler()
-# x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
-# x_val_multi = scaler.transform(x_val_multi.reshape(-1, 1)).reshape(x_val_multi.shape)
-# y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
-# y_val_multi = scaler.transform(y_val_multi.reshape(-1, 1)).reshape(y_val_multi.shape)
-#
-#
-# def create_model(input_shape, future_steps):
-#     model = Sequential()
-#     model.add(LSTM(50, input_shape=input_shape))
-#     model.add(Dropout(0.2))
-#     model.add(Dense(future_steps))
-#     model.compile(optimizer='adam', loss='mse')
-#     model.summary()
-#     return model
-#
-#
-# def train_model(model, x_train, y_train, x_val, y_val, use_es=True):
-#     if use_es:
-#         es = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=10)
-#     else:
-#         es = None
-#
-#     return model.fit(x_train, y_train, epochs=20,
-#                      batch_size=1, validation_data=(x_val, y_val),
-#                      verbose=1, shuffle=False, callbacks=[es])
-#
-#
-# def plot_history(model_history):
-#     loss = model_history.history['loss']
-#     val_loss = model_history.history['val_loss']
-#     epochs = range(len(loss))
-#     plt.figure()
-#     plt.plot(epochs, loss, 'b', label='Training loss')
-#     plt.plot(epochs, val_loss, 'r', label='Validation loss')
-#     plt.title('Training and validation loss')
-#     plt.legend()
-#     plt.show()
-#
-#
-# print('*' * 50)
-# print('Training model...')
-# print('x_train_multi shape: ', x_train_multi.shape)
-# print('y_train_multi shape: ', y_train_multi.shape)
-# print('x_val_multi shape: ', x_val_multi.shape)
-# print('y_val_multi shape: ', y_val_multi.shape)
-# print('input_shape: ', x_train_multi.shape[-2:])
-#
-# my_model = create_model(input_shape=x_train_multi.shape[-2:], future_steps=future_target)
-# history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi, use_es=True)
-# plot_history(history)
+print('*' * 50)
+print('Training model...')
+print('x_train_multi shape: ', x_train_multi.shape)
+print('y_train_multi shape: ', y_train_multi.shape)
+print('x_val_multi shape: ', x_val_multi.shape)
+print('y_val_multi shape: ', y_val_multi.shape)
+print('input_shape: ', x_train_multi.shape[-2:])
+
+my_model = create_model(input_shape=x_train_multi.shape[-2:], future_steps=future_target)
+history = train_model(my_model, x_train_multi, y_train_multi, x_val_multi, y_val_multi, use_es=True)
+plot_history(history)
 # #
-# my_model.save(f'Models/{dataset}_{col1}_{future_target}_addvantage_diff.h5')
+my_model.save(f'Models/{dataset}_{col1}_{future_target}_addvantage_diff.h5')
 # print(f'{Fore.GREEN}Model saved')
 #
 # # predict
@@ -279,119 +279,119 @@ def prepare_data(data, past_steps, future_steps, step, train_split):
 # plt.tight_layout()
 # plt.show()
 
-def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
-    Path('Models').mkdir(parents=True, exist_ok=True)
-    Path('Data').mkdir(parents=True, exist_ok=True)
-    Path('Plots').mkdir(parents=True, exist_ok=True)
-    # table = "accuweather_direct"
-    # col1 = col1
-    df1 = get_data_from_db(table, col1, 'opendataset')
-    # col2 = 'Air temperature'
-    df2 = get_data_from_db('addvantage', col2, 'addvantage')
-
-    agg = {'Wind speed 100 Hz': "mean", 'RH': "mean",
-           'Air temperature': "mean",
-           'Leaf Wetness': "mean", 'Soil conductivity_25cm': "mean",
-           'Soil conductivity_15cm': "mean",
-           'Soil conductivity_5cm': "mean",
-           'Soil temperature_25cm': "mean",
-           'Soil temperature_15cm': "mean",
-           'Soil temperature_5cm': "mean", 'Soil moisture_25cm': "mean",
-           'Soil moisture_15cm': "mean", 'Soil moisture_5cm': "mean",
-           'Precipitation': "sum", 'Pyranometer': "mean"
-           }
-    df3 = get_new_addvantage_data(drop_nan=True, aggreg=agg, past_hours=24)
-    df3 = df3[[col2]]
-    df3.rename(columns={col2: f'addvantage_{col2}'}, inplace=True)
-    df3.index = df3.index.tz_convert('UTC')
-
-    df2 = pd.concat([df2, df3], axis=0)
-    df2 = df2[~df2.index.duplicated(keep='first')]
-    df2.sort_index(inplace=True)
-
-
-    if df1 is not None and df2 is not None:
-        df = munch_data(df1, df2)
-        df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
-    else:
-        print(f'{Fore.RED}No data to process')
-        sys.exit(1)
-
-    # prepare data
-    past_history = past_steps
-    future_target = future_steps
-    STEP = 1
-    TRAIN_SPLIT = int(len(df) * 0.9)
-
-    x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
-        df, past_history, future_target, STEP, TRAIN_SPLIT)
-
-    # scale data
-    scaler = MinMaxScaler()
-    x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
-    print(f'{Fore.CYAN}Data scaled')
-    print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
-
-
-    # set Paths
-    path = f"Plots/{table}/{col1}/{future_target}_future_hours"
-    Path(path).mkdir(parents=True, exist_ok=True)
-    Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
-    Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
-
-    # make predictions
-    my_model = tf.keras.models.load_model(f'Models/openweather_direct_{col1}_{future_target}_addvantage_diff.h5')
-
-    last_window = df.iloc[-past_steps:, :]
-
-    last_window = last_window.values.reshape(1, last_window.shape[0], last_window.shape[1])
-    print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
-
-    inp = last_window.reshape(-1, 1)
-    print(f'{Fore.GREEN}inp shape: {inp.shape}')
-
-    inp = scaler.transform(inp)
-    inp = inp.reshape(1, past_steps, last_window.shape[2])
-    print(f'{Fore.YELLOW}Input shape: {inp.shape}')
-
-    y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
-    model_predictions = predict_new(my_model, inp, scaler)
-    print(f'{Fore.GREEN}Predictions made')
-    print(f'{Fore.GREEN}model_predictions shape: {model_predictions.shape}')
-
-    start_date = df.iloc[-past_steps:, :].index[-1] + timedelta(hours=1)
-    end_date = start_date + timedelta(hours=future_target)
-
-    latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
-                                   end_date=end_date)
-    latest_weather_data.sort_index(inplace=True)
-
-    a = latest_weather_data[col1].values
-
-    latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
-
-    b = latest_weather_data[col1].values
-    print(f'{Fore.GREEN}Correction made to latest weather data')
-
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
-    plt.xticks(rotation=90)
-    plt.plot(latest_weather_data.index, a, label='actual')
-    plt.plot(latest_weather_data.index, b, label='corrected')
-    plt.title(f'{col1} Correction')
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-    return latest_weather_data[col1], start_date, end_date
-
-
-temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
-                                                         table='openweather_direct',
-                                                         past_steps=72, future_steps=12)
-rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='humidity', col2='RH', table='openweather_direct',
-                                                 past_steps=72, future_steps=12)
-
-wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
-                                                         table='openweather_direct',
-                                                         past_steps=72, future_steps=12)
+# def if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
+#     Path('Models').mkdir(parents=True, exist_ok=True)
+#     Path('Data').mkdir(parents=True, exist_ok=True)
+#     Path('Plots').mkdir(parents=True, exist_ok=True)
+#     # table = "accuweather_direct"
+#     # col1 = col1
+#     df1 = get_data_from_db(table, col1, 'opendataset')
+#     # col2 = 'Air temperature'
+#     df2 = get_data_from_db('addvantage', col2, 'addvantage')
+#
+#     agg = {'Wind speed 100 Hz': "mean", 'RH': "mean",
+#            'Air temperature': "mean",
+#            'Leaf Wetness': "mean", 'Soil conductivity_25cm': "mean",
+#            'Soil conductivity_15cm': "mean",
+#            'Soil conductivity_5cm': "mean",
+#            'Soil temperature_25cm': "mean",
+#            'Soil temperature_15cm': "mean",
+#            'Soil temperature_5cm': "mean", 'Soil moisture_25cm': "mean",
+#            'Soil moisture_15cm': "mean", 'Soil moisture_5cm': "mean",
+#            'Precipitation': "sum", 'Pyranometer': "mean"
+#            }
+#     df3 = get_new_addvantage_data(drop_nan=True, aggreg=agg, past_hours=24)
+#     df3 = df3[[col2]]
+#     df3.rename(columns={col2: f'addvantage_{col2}'}, inplace=True)
+#     df3.index = df3.index.tz_convert('UTC')
+#
+#     df2 = pd.concat([df2, df3], axis=0)
+#     df2 = df2[~df2.index.duplicated(keep='first')]
+#     df2.sort_index(inplace=True)
+#
+#
+#     if df1 is not None and df2 is not None:
+#         df = munch_data(df1, df2)
+#         df.to_csv(f'Data/{table}_addvantage_{col1}_diff.csv')
+#     else:
+#         print(f'{Fore.RED}No data to process')
+#         sys.exit(1)
+#
+#     # prepare data
+#     past_history = past_steps
+#     future_target = future_steps
+#     STEP = 1
+#     TRAIN_SPLIT = int(len(df) * 0.9)
+#
+#     x_train_multi, y_train_multi, x_train__multi_index, y_train_multi_index, x_val_multi, y_val_multi, x_val_multi_index, y_val_multi_index = prepare_data(
+#         df, past_history, future_target, STEP, TRAIN_SPLIT)
+#
+#     # scale data
+#     scaler = MinMaxScaler()
+#     x_train_multi = scaler.fit_transform(x_train_multi.reshape(-1, 1)).reshape(x_train_multi.shape)
+#     print(f'{Fore.CYAN}Data scaled')
+#     print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
+#
+#
+#     # set Paths
+#     path = f"Plots/{table}/{col1}/{future_target}_future_hours"
+#     Path(path).mkdir(parents=True, exist_ok=True)
+#     Path(path + '/predictions').mkdir(parents=True, exist_ok=True)
+#     Path(path + '/corrections').mkdir(parents=True, exist_ok=True)
+#
+#     # make predictions
+#     my_model = tf.keras.models.load_model(f'Models/openweather_direct_{col1}_{future_target}_addvantage_diff.h5')
+#
+#     last_window = df.iloc[-past_steps:, :]
+#
+#     last_window = last_window.values.reshape(1, last_window.shape[0], last_window.shape[1])
+#     print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
+#
+#     inp = last_window.reshape(-1, 1)
+#     print(f'{Fore.GREEN}inp shape: {inp.shape}')
+#
+#     inp = scaler.transform(inp)
+#     inp = inp.reshape(1, past_steps, last_window.shape[2])
+#     print(f'{Fore.YELLOW}Input shape: {inp.shape}')
+#
+#     y_train_multi = scaler.fit_transform(y_train_multi.reshape(-1, 1)).reshape(y_train_multi.shape)
+#     model_predictions = predict_new(my_model, inp, scaler)
+#     print(f'{Fore.GREEN}Predictions made')
+#     print(f'{Fore.GREEN}model_predictions shape: {model_predictions.shape}')
+#
+#     start_date = df.iloc[-past_steps:, :].index[-1] + timedelta(hours=1)
+#     end_date = start_date + timedelta(hours=future_target)
+#
+#     latest_weather_data = get_data(table=table, start_date=start_date, limit=future_target,
+#                                    end_date=end_date)
+#     latest_weather_data.sort_index(inplace=True)
+#
+#     a = latest_weather_data[col1].values
+#
+#     latest_weather_data[col1] = latest_weather_data[col1] - model_predictions[0, :latest_weather_data.shape[0]]
+#
+#     b = latest_weather_data[col1].values
+#     print(f'{Fore.GREEN}Correction made to latest weather data')
+#
+#     ax = plt.gca()
+#     ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d %H:%M:%S'))
+#     plt.xticks(rotation=90)
+#     plt.plot(latest_weather_data.index, a, label='actual')
+#     plt.plot(latest_weather_data.index, b, label='corrected')
+#     plt.title(f'{col1} Correction')
+#     plt.legend()
+#     plt.tight_layout()
+#     plt.show()
+#     return latest_weather_data[col1], start_date, end_date
+#
+#
+# temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
+#                                                          table='openweather_direct',
+#                                                          past_steps=72, future_steps=12)
+# rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='humidity', col2='RH', table='openweather_direct',
+#                                                  past_steps=72, future_steps=12)
+#
+# wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(new_train=False, col1='wind_speed', col2='Wind speed 100 Hz',
+#                                                          table='openweather_direct',
+#                                                          past_steps=72, future_steps=12)
 
