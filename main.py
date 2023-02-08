@@ -441,7 +441,7 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
 
     last_window = df.iloc[-past_steps:, :]
     print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
-    print(f'{Fore.GREEN}Last window index: {last_window.index}')
+    # print(f'{Fore.GREEN}Last window index: {last_window.index}')
 
 
 
