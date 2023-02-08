@@ -19,7 +19,7 @@ sql = f"""with q as (select openweather_direct.timestamp,
                   a.wind_speed                  as wind_speed_openweather_corrected
 
            from openweather_direct
-                    inner join openweather_corrected_test a on openweather_direct.timestamp = a.timestamp)
+                    inner join openweather_corrected a on openweather_direct.timestamp = a.timestamp)
 select q.timestamp,
        q.temp_openweather,
        q.humidity_openweather,
