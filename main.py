@@ -412,7 +412,8 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
         sys.exit(1)
     print(f'{Fore.CYAN}Data processed')
 
-
+    if col1 == 'wind_speed':
+        df = df.loc[df.index > '2022-10-01 00:00:00']
     # prepare data
     past_history = past_steps
     future_target = future_steps
