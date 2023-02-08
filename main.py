@@ -494,30 +494,30 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
 def make_corrections():
     try:
         # accuweather
-        # temp, start, end = if_you_want_loyalty_buy_a_dog(col1='temp', col2='Air temperature',
-        #                                                  table='accuweather_direct',
-        #                                                  past_steps=72, future_steps=12)
-        # rh, _, _ = if_you_want_loyalty_buy_a_dog(col1='rh', col2='RH', table='accuweather_direct',
-        #                                          past_steps=72, future_steps=12)
-        #
-        # precipitation, _, _ = if_you_want_loyalty_buy_a_dog(col1='precipitation', col2='Precipitation',
-        #                                                     table='accuweather_direct',
-        #                                                     past_steps=72, future_steps=12)
-        # wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(col1='wind_speed', col2='Wind speed 100 Hz',
-        #                                                  table='accuweather_direct',
-        #                                                  past_steps=72, future_steps=12)
-        # # evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
-        # #                                                          table='accuweather_direct',
-        # #                                                          past_steps=72, future_steps=12)
-        # solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(col1='solar_irradiance', col2='Pyranometer',
-        #                                                  table='accuweather_direct',
-        #                                                  past_steps=72, future_steps=12)
-        # df1 = pd.concat([temp, rh, precipitation, wind_speed, solar_irradiance], axis=1)
-        # Path('Data/corrections').mkdir(parents=True, exist_ok=True)
-        # df1.to_csv(
-        #     f'Data/corrections/corrections_accuweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
-        # # Add to database
-        # df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
+        temp, start, end = if_you_want_loyalty_buy_a_dog(col1='temp', col2='Air temperature',
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
+        rh, _, _ = if_you_want_loyalty_buy_a_dog(col1='rh', col2='RH', table='accuweather_direct',
+                                                 past_steps=72, future_steps=12)
+
+        precipitation, _, _ = if_you_want_loyalty_buy_a_dog(col1='precipitation', col2='Precipitation',
+                                                            table='accuweather_direct',
+                                                            past_steps=72, future_steps=12)
+        wind_speed, _, _ = if_you_want_loyalty_buy_a_dog(col1='wind_speed', col2='Wind speed 100 Hz',
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
+        # evapotranspiration, _, _ = if_you_want_loyalty_buy_a_dog(new_train=False, col1='evapotranspiration', col2='eto',
+        #                                                          table='accuweather_direct',
+        #                                                          past_steps=72, future_steps=12)
+        solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(col1='solar_irradiance', col2='Pyranometer',
+                                                         table='accuweather_direct',
+                                                         past_steps=72, future_steps=12)
+        df1 = pd.concat([temp, rh, precipitation, wind_speed, solar_irradiance], axis=1)
+        Path('Data/corrections').mkdir(parents=True, exist_ok=True)
+        df1.to_csv(
+            f'Data/corrections/corrections_accuweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
+        # Add to database
+        df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
 
         # openweather
         temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
