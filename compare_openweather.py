@@ -34,7 +34,7 @@ select q.timestamp,
 from q
          inner join addvantage b on q.timestamp = b.timestamp
 order by timestamp desc
-limit 12"""
+limit 24"""
 
 data = pd.read_sql(sql, engine)
 data = data.set_index('timestamp')
@@ -60,7 +60,7 @@ plt.plot(temp.index, temp['temp_openweather_corrected'], label='Openweather corr
 plt.plot(temp.index, temp['temp_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/temp_openweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/temp_openweather_addvantage.png', dpi=300)
 plt.show()
 
 humidity = data[['humidity_openweather', 'humidity_openweather_corrected', 'hummidity_addvantage']]
@@ -78,7 +78,7 @@ plt.plot(humidity.index, humidity['humidity_openweather_corrected'], label='Open
 plt.plot(humidity.index, humidity['hummidity_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/humidity_openweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/humidity_openweather_addvantage.png', dpi=300)
 plt.show()
 
 wind_speed = data[['wind_speed_openweather', 'wind_speed_openweather_corrected', 'wind_speed_addvantage']]
@@ -96,7 +96,7 @@ plt.plot(wind_speed.index, wind_speed['wind_speed_openweather_corrected'], label
 plt.plot(wind_speed.index, wind_speed['wind_speed_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/wind_speed_openweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/wind_speed_openweather_addvantage.png', dpi=300)
 plt.show()
 
 
@@ -131,7 +131,7 @@ plt.ylim(0, 100)
 plt.legend()
 plt.tight_layout()
 plt.plot()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\percentage_decrease_openweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\percentage_decrease_openweather_addvantage.png', dpi=300)
 plt.show()
 
 

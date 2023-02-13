@@ -9,21 +9,19 @@ import numpy as np
 import pandas as pd
 import pytz
 import requests
+import tensorflow as tf
 import xmltodict as xmltodict
 from colorama import Fore, init
-from matplotlib.dates import DateFormatter
+from dotenv import load_dotenv
+from matplotlib import rcParams
 from numpy import set_printoptions
 from pandas import to_datetime
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.preprocessing import MinMaxScaler
+from sqlalchemy import create_engine
 
 from Modules.Scheduler import my_schedule
 from Modules.Utils import get_data, set_seed
-from sklearn.preprocessing import MinMaxScaler
-
-from matplotlib import rcParams, pyplot as plt
-
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-import tensorflow as tf
 
 init(autoreset=True)
 set_seed(42)
@@ -109,7 +107,6 @@ def predict(model, x_val, scaler):
     predictions = predictions.reshape(predictions.shape[0], predictions.shape[1])
 
     return predictions
-
 
 
 def get_addvantage_session_id():
@@ -266,6 +263,8 @@ def get_new_addvantage_data(
     df_out['application_group'] = '68ead743e6d6e531352fe86280918678761982bc'
 
     return df_out
+
+
 def if_you_want_loyalty_buy_a_dog(col1=None, col2=None, table=None, past_steps=72, future_steps=12, ):
     Path('Models').mkdir(parents=True, exist_ok=True)
     Path('Data').mkdir(parents=True, exist_ok=True)
@@ -295,7 +294,6 @@ def if_you_want_loyalty_buy_a_dog(col1=None, col2=None, table=None, past_steps=7
     df2 = pd.concat([df2, df3], axis=0)
     df2 = df2[~df2.index.duplicated(keep='first')]
     df2.sort_index(inplace=True)
-
 
     if df1 is not None and df2 is not None:
         df = munch_data(df1, df2)
@@ -379,9 +377,9 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
     Path('Plots').mkdir(parents=True, exist_ok=True)
     # table = "accuweather_direct"
     # col1 = col1
-    df1 = get_data_from_db(table, col1, 'opendataset') # 'openweather_direct data'
+    df1 = get_data_from_db(table, col1, 'opendataset')  # 'openweather_direct data'
     # col2 = 'Air temperature'
-    df2 = get_data_from_db('addvantage', col2, 'addvantage') # 'addvantage data'
+    df2 = get_data_from_db('addvantage', col2, 'addvantage')  # 'addvantage data'
 
     agg = {'Wind speed 100 Hz': "mean", 'RH': "mean",
            'Air temperature': "mean",
@@ -401,8 +399,6 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
     df2 = pd.concat([df2, df3], axis=0)
     df2 = df2[~df2.index.duplicated(keep='first')]
     df2.sort_index(inplace=True)
-
-
 
     if df1 is not None and df2 is not None:
         df = munch_data(df1, df2)
@@ -429,7 +425,6 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
     print(f'{Fore.CYAN}Data scaled')
     print(f'{Fore.CYAN}y_train shape: {y_train_multi.shape}')
 
-
     # set Paths
     path = f"Plots/{table}/{col1}/{future_target}_future_hours"
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -442,8 +437,6 @@ def if_you_want_loyalty_buy_a_dog_openweather(col1=None, col2=None, table=None, 
     last_window = df.iloc[-past_steps:, :]
     print(f'{Fore.GREEN}Last window shape: {last_window.shape}')
     # print(f'{Fore.GREEN}Last window index: {last_window.index}')
-
-
 
     last_window = last_window.values.reshape(1, last_window.shape[0], last_window.shape[1])
 
@@ -510,27 +503,28 @@ def make_corrections():
         #                                                          table='accuweather_direct',
         #                                                          past_steps=72, future_steps=12)
         solar_irradiance, _, _ = if_you_want_loyalty_buy_a_dog(col1='solar_irradiance', col2='Pyranometer',
-                                                         table='accuweather_direct',
-                                                         past_steps=72, future_steps=12)
+                                                               table='accuweather_direct',
+                                                               past_steps=72, future_steps=12)
         df1 = pd.concat([temp, rh, precipitation, wind_speed, solar_irradiance], axis=1)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
         df1.to_csv(
             f'Data/corrections/corrections_accuweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
         # Add to database
-        df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
+        # df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
 
         # openweather
         temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
-                                                         table='openweather_direct',
-                                                         past_steps=72, future_steps=12)
-        rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='humidity', col2='RH', table='openweather_direct',
-                                                 past_steps=72, future_steps=12)
+                                                                                 table='openweather_direct',
+                                                                                 past_steps=72, future_steps=12)
+        rh_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='humidity', col2='RH',
+                                                                         table='openweather_direct',
+                                                                         past_steps=72, future_steps=12)
 
-        wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='wind_speed', col2='Wind speed 100 Hz',
-                                                         table='openweather_direct',
-                                                         past_steps=72, future_steps=12)
+        wind_speed_openweather, _, _ = if_you_want_loyalty_buy_a_dog_openweather(col1='wind_speed',
+                                                                                 col2='Wind speed 100 Hz',
+                                                                                 table='openweather_direct',
+                                                                                 past_steps=72, future_steps=12)
         df2 = pd.concat([temp_openweather, rh_openweather, wind_speed_openweather], axis=1)
-
 
         df2.rename(columns={'humidity': 'rh'}, inplace=True)
         Path('Data/corrections').mkdir(parents=True, exist_ok=True)
@@ -538,11 +532,114 @@ def make_corrections():
             f'Data/corrections/corrections_openweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
 
         # Add to database
-        df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
+        # df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
+        print(start, end)
+        ald = Final(pd.to_datetime(start) - timedelta(days=7, hours=1),
+                  pd.to_datetime(start) - timedelta(hours=1)).new_data()
+        print(ald)
+
     except Exception as e:
         print(e)
         print(f'{Fore.RED}Something went wrong')
         return
+
+
+class Final:
+    def __init__(self, start_d, end_d):
+        self.start_date = start_d
+        self.end_date = end_d
+        self.df = pd.DataFrame()
+
+    def openweather_corrected(self):
+        df = get_data(table='openweather_corrected', start_date=self.start_date, end_date=self.end_date)
+        df = df[['temp', 'rh', 'wind_speed']]
+        df = df.rename(
+            columns={'temp': 'openweather_corrected_temp', 'rh': 'openweather_corrected_rh',
+                     'wind_speed': 'openweather_corrected_wind_speed'})
+        return df
+
+    def accuweather_corrected(self):
+        df = get_data(table='accuweather_corrected', start_date=self.start_date, end_date=self.end_date)
+        df = df[['temp', 'rh', 'wind_speed']]
+        df = df.rename(
+            columns={'temp': 'accuweather_corrected_temp', 'rh': 'accuweather_corrected_rh',
+                     'wind_speed': 'accuweather_corrected_wind_speed'})
+        return df
+
+    def addvantage(self):
+        df = get_data(table='addvantage', start_date=self.start_date, end_date=self.end_date)
+        df = df[['Air temperature', 'RH', 'Wind speed 100 Hz']].rename(
+            columns={'Air temperature': 'addvantage_temp', 'RH': 'addvantage_rh',
+                     'Wind speed 100 Hz': 'addvantage_wind_speed'})
+        return df
+
+    def get_all(self):
+        print('Getting all data')
+        print('Start date: ', self.start_date)
+        print('End date: ', self.end_date)
+
+        df = pd.concat([self.openweather_corrected(), self.accuweather_corrected(), self.addvantage()], axis=1,
+                       join='inner')
+
+        return df
+
+    def weighs(self):
+        df = self.get_all()
+
+        df = df.replace(0, 0.0001)
+        columns = ['openweather_corrected_temp', 'openweather_corrected_rh', 'openweather_corrected_wind_speed',
+                   'accuweather_corrected_temp', 'accuweather_corrected_rh',
+                   'accuweather_corrected_wind_speed']
+        mapes = {}
+        for column in columns:
+            if 'rh' in column:
+                mape = mean_absolute_percentage_error(df[column], df['addvantage_rh'])
+            elif 'temp' in column:
+                mape = mean_absolute_percentage_error(df[column], df['addvantage_temp'])
+            elif 'wind_speed' in column:
+                mape = mean_absolute_percentage_error(df[column], df['addvantage_wind_speed'])
+            mapes[column] = mape
+
+        df = pd.DataFrame(mapes, index=[0])
+        weighs = df.apply(lambda x: 1 / x, axis=1)
+        return weighs
+
+    def new_data(self):
+        start_d = self.end_date + timedelta(hours=1)
+        end_d = start_d + timedelta(hours=12)
+        print('start_d: ', start_d)
+        print('end_d: ', end_d)
+        openweather_corrected = get_data(table='openweather_corrected', start_date=start_d, end_date=end_d)
+        openweather_corrected = openweather_corrected[['temp', 'rh', 'wind_speed']]
+        openweather_corrected = openweather_corrected.rename(
+            columns={'temp': 'openweather_corrected_temp', 'rh': 'openweather_corrected_rh',
+                     'wind_speed': 'openweather_corrected_wind_speed'})
+        accuweather_corrected = get_data(table='accuweather_corrected', start_date=start_d, end_date=end_d)
+        accuweather_corrected = accuweather_corrected[['temp', 'rh', 'wind_speed']]
+        accuweather_corrected = accuweather_corrected.rename(
+            columns={'temp': 'accuweather_corrected_temp', 'rh': 'accuweather_corrected_rh',
+                     'wind_speed': 'accuweather_corrected_wind_speed'})
+        df = pd.concat([openweather_corrected, accuweather_corrected], axis=1, join='inner')
+        return df.loc[start_d:end_d]
+
+    def apply_weights(self):
+        df = self.new_data()
+
+        print(df)
+        weighs = self.weighs()
+        print(weighs.values[0])
+
+        df = (df * weighs.values[0]) / weighs.values[0].sum()
+        df['temp'] = df['openweather_corrected_temp'] + df['accuweather_corrected_temp']
+        df['rh'] = df['openweather_corrected_rh'] + df['accuweather_corrected_rh']
+        df['wind_speed'] = df['openweather_corrected_wind_speed'] + df['accuweather_corrected_wind_speed']
+        df = df[['temp', 'rh', 'wind_speed']]
+        self.df = df
+        return None
+
+    def save_to_db(self):
+        self.apply_weights()
+        self.df.to_sql('final_corrections', con=engine, if_exists='append', index=True)
 
 
 if __name__ == '__main__':

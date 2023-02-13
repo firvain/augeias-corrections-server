@@ -46,6 +46,7 @@ order by b.timestamp desc limit 24"""
 data = pd.read_sql(sql, engine)
 data = data.set_index('timestamp')
 data.index = pd.to_datetime(data.index).tz_convert('Europe/Athens')
+
 mape_array = []
 temp = data[['temp_accuweather', 'temp_accuweather_corrected', 'temp_addvantage']]
 
@@ -65,7 +66,7 @@ plt.plot(temp.index, temp['temp_accuweather_corrected'], label='Accuweather corr
 plt.plot(temp.index, temp['temp_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/temp_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ/temp_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 
@@ -84,7 +85,7 @@ plt.plot(humidity.index, humidity['humidity_accuweather_corrected'], label='Accu
 plt.plot(humidity.index, humidity['hummidity_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\humidity_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\humidity_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 precipitation = data[['precipitation_accuweather', 'precipitation_accuweather_corrected', 'precipitation_advantage']]
@@ -102,7 +103,7 @@ plt.plot(precipitation.index, precipitation['precipitation_accuweather_corrected
 plt.plot(precipitation.index, precipitation['precipitation_advantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\precipitation_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\precipitation_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 wind_speed = data[['wind_speed_accuweather', 'wind_speed_accuweather_corrected', 'wind_speed_addvantage']]
@@ -120,7 +121,7 @@ plt.plot(wind_speed.index, wind_speed['wind_speed_accuweather_corrected'], label
 plt.plot(wind_speed.index, wind_speed['wind_speed_addvantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\wind_speed_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\wind_speed_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 
@@ -143,7 +144,7 @@ plt.plot(solar_irradiance.index, solar_irradiance['solar_irradiance_corrected'],
 plt.plot(solar_irradiance.index, solar_irradiance['solar_irradiance_advantage'], label='Addvantage')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\solar_irradiance_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\solar_irradiance_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 
@@ -162,7 +163,7 @@ mape_df.plot.bar(figsize=(20, 10), rot=0, )
 plt.ylabel('MAPE')
 plt.legend()
 plt.tight_layout()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\mape_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\mape_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 
@@ -179,7 +180,7 @@ plt.ylim(0, 100)
 plt.legend()
 plt.tight_layout()
 plt.plot()
-plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\percentage_decrease_accuweather_addvantage.png', dpi=300)
+# plt.savefig('Z:\Projects\ΑΥΓΕΙΑΣ\ΕΓΓΡΑΦΑ\percentage_decrease_accuweather_addvantage.png', dpi=300)
 plt.show()
 
 
