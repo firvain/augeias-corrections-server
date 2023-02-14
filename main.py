@@ -534,9 +534,9 @@ def make_corrections():
         # Add to database
         df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
         print(start, end)
-        ald = Final(pd.to_datetime(start) - timedelta(days=7, hours=1),
-                  pd.to_datetime(start) - timedelta(hours=1)).new_data()
-        print(ald)
+        Final(pd.to_datetime(start) - timedelta(days=7, hours=1),
+                  pd.to_datetime(start) - timedelta(hours=1)).save_to_db()
+
 
     except Exception as e:
         print(e)
