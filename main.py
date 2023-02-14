@@ -510,7 +510,7 @@ def make_corrections():
         df1.to_csv(
             f'Data/corrections/corrections_accuweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
         # Add to database
-        # df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
+        df1.to_sql('accuweather_corrected', con=engine, if_exists='append', index=True)
 
         # openweather
         temp_openweather, start, end = if_you_want_loyalty_buy_a_dog_openweather(col1='temp', col2='Air temperature',
@@ -532,7 +532,7 @@ def make_corrections():
             f'Data/corrections/corrections_openweather_{start.strftime("%Y_%m_%d %H_%M_%S")}_{end.strftime("%Y_%m_%d %H_%M_%S")}.csv')
 
         # Add to database
-        # df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
+        df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
         print(start, end)
         ald = Final(pd.to_datetime(start) - timedelta(days=7, hours=1),
                   pd.to_datetime(start) - timedelta(hours=1)).new_data()
