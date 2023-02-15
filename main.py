@@ -623,13 +623,20 @@ class Final:
         return df.loc[start_d:end_d]
 
     def apply_weights(self):
+        print('Applying weights')
         df = self.new_data()
-
-        print(df)
         weighs = self.weighs()
-        print(weighs.values[0])
+        for i in range(0, len(weighs.values[0].flatten())):
+            if i >= len(weighs.values[0].flatten()) - 3:
+                break
+            first = weighs.values[0].flatten()[i]
+            third = weighs.values[0].flatten()[i + 3]
+            weighs.values[0][i] = first / (first + third)
+            weighs.values[0][i + 3] = third / (first + third)
 
-        df = (df * weighs.values[0]) / weighs.values[0].sum()
+        for i in range(0, len(weighs.values[0].flatten())):
+            df.iloc[:, i] = (df.iloc[:, i] * weighs.values[0].flatten()[i])
+
         df['temp'] = df['openweather_corrected_temp'] + df['accuweather_corrected_temp']
         df['rh'] = df['openweather_corrected_rh'] + df['accuweather_corrected_rh']
         df['wind_speed'] = df['openweather_corrected_wind_speed'] + df['accuweather_corrected_wind_speed']
@@ -639,8 +646,8 @@ class Final:
 
     def save_to_db(self):
         self.apply_weights()
+        print('Saving final corrections to db')
         self.df.to_sql('final_corrections', con=engine, if_exists='append', index=True)
-
 
 if __name__ == '__main__':
     my_schedule(make_corrections)
