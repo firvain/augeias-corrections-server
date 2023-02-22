@@ -533,7 +533,7 @@ def make_corrections():
 
         # Add to database
         df2.to_sql('openweather_corrected', con=engine, if_exists='append', index=True)
-        print(start, end)
+
         Final(pd.to_datetime(start) - timedelta(days=7, hours=1),
               pd.to_datetime(start) - timedelta(hours=1)).save_to_db()
 
@@ -577,9 +577,14 @@ class Final:
         print('Getting all data')
         print('Start date: ', self.start_date)
         print('End date: ', self.end_date)
-
-        df = pd.concat([self.openweather_corrected(), self.accuweather_corrected(), self.addvantage()], axis=1,
-                       join='inner')
+        #drop duplicates
+        op = self.openweather_corrected()
+        op = op.loc[~op.index.duplicated(keep='first')]
+        ac = self.accuweather_corrected()
+        ac = ac.loc[~ac.index.duplicated(keep='first')]
+        ad = self.addvantage()
+        ad = ad.loc[~ad.index.duplicated(keep='first')]
+        df = pd.concat([op, ac, ad], axis=1, join='inner')
 
         return df
 
@@ -619,12 +624,17 @@ class Final:
         accuweather_corrected = accuweather_corrected.rename(
             columns={'temp': 'accuweather_corrected_temp', 'rh': 'accuweather_corrected_rh',
                      'wind_speed': 'accuweather_corrected_wind_speed'})
+        # drop duplicates
+        accuweather_corrected = accuweather_corrected.loc[~accuweather_corrected.index.duplicated(keep='first')]
+        openweather_corrected = openweather_corrected.loc[~openweather_corrected.index.duplicated(keep='first')]
+
         df = pd.concat([openweather_corrected, accuweather_corrected], axis=1, join='inner')
         return df.loc[start_d:end_d]
 
     def apply_weights(self):
         print('Applying weights')
         df = self.new_data()
+
         weighs = self.weighs()
         for i in range(0, len(weighs.values[0].flatten())):
             if i >= len(weighs.values[0].flatten()) - 3:
@@ -648,7 +658,7 @@ class Final:
         self.apply_weights()
         print('Saving final corrections to db')
         self.df.to_sql('final_corrections', con=engine, if_exists='append', index=True)
-
+        return None
 
 if __name__ == '__main__':
     my_schedule(make_corrections)
